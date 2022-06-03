@@ -1,2 +1,2 @@
 # Spring_From_Mendelssohn
-A self-reliant SFM toy
+A self-reliant SFM toy in C++
