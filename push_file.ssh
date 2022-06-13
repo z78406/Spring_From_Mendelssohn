@@ -1,0 +1,5 @@
+# use this file to automatically push modifications.
+#
+git add .
+git commit -m "latest commit"
+git push origin main

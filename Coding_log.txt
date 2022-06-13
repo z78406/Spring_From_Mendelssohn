@@ -1,0 +1,7 @@
+TO DO List:
+
+1. Refine Match2ViewBidirectional() to allow for more correct matching key point pairs.
+
+2. Try ICCV2021 Pixel-perfect SFM using the current framework.
+
+3. 
