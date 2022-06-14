@@ -21,12 +21,12 @@ class Feature {
     void DetectFeatureORB(Frame& cur_frame, int max_num = 5000, bool show = false);
 
     void Match2viewSIFT(Frame& frameID_1, Frame& frameID_2,
-      std::vector<cv::DMatch> &match_buffer, double dist_ratio = 0.6, bool show = false);
+      std::vector<cv::DMatch> &matches_buffer, double dist_ratio = 0.6, bool show = false);
     void Match2viewSIFTBidirectional(Frame& frameID_1, Frame& frameID_2,
-      std::vector<cv::DMatch> &match_buffer, double dist_ratio = 0.6, bool show = false);
-    void Match2viewSURF(Frame& frameID_1, Frame& frameID_2, std::vector<cv::DMatch>& match_buffer,
+      std::vector<cv::DMatch> &matches_buffer, double dist_ratio = 0.6, bool show = false);
+    void Match2viewSURF(Frame& frameID_1, Frame& frameID_2, std::vector<cv::DMatch>& matches_buffer,
                          double dist_ratio = 0.5, bool show = false);
-    void Match2viewORB(Frame& frameID_1, Frame& frameID_2, std::vector<cv::DMatch>& match_buffer,
+    void Match2viewORB(Frame& frameID_1, Frame& frameID_2, std::vector<cv::DMatch>& matches_buffer,
                          double dist_ratio = 0.5, bool show = false);
 
 };

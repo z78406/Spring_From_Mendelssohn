@@ -38,8 +38,7 @@ void Feature::DetectFeatureSIFT(Frame& cur_frame, bool show) {
 }
 
 
-void Feature::DetectFeatureORB(Frame& cur_frame, int max_num, bool show)
-{
+void Feature::DetectFeatureORB(Frame& cur_frame, int max_num, bool show) {
   cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create(max_num);
 
   std::chrono::steady_clock::time_point tic = std::chrono::steady_clock::now();
@@ -49,8 +48,7 @@ void Feature::DetectFeatureORB(Frame& cur_frame, int max_num, bool show)
   std::chrono::duration<double> time_used = std::chrono::duration_cast<std::chrono::duration<double>>(toc - tic);
   std::cout << "extract ORB cost = " << time_used.count() << " seconds. " << std::endl;
   std::cout << "Found " << cur_frame.descriptors.size() << " features" << std::endl;
-  if (show)
-  {
+  if (show) {
     cv::Mat feature_image;
     cv::namedWindow("ORB features",0);
     cv::drawKeypoints(cur_frame.img_rgb, cur_frame.keypoints, feature_image, cv::Scalar::all(-1), cv::DrawMatchesFlags::DEFAULT);
@@ -59,8 +57,7 @@ void Feature::DetectFeatureORB(Frame& cur_frame, int max_num, bool show)
   }
 }
 
-void Feature::DetectFeatureSURF(Frame& cur_frame, int minHessian, bool show)
-{
+void Feature::DetectFeatureSURF(Frame& cur_frame, int minHessian, bool show) {
   cv::Ptr<cv::FeatureDetector> detector = cv::xfeatures2d::SURF::create(minHessian);
 
   std::chrono::steady_clock::time_point tic = std::chrono::steady_clock::now();
@@ -70,9 +67,8 @@ void Feature::DetectFeatureSURF(Frame& cur_frame, int minHessian, bool show)
   std::chrono::duration<double> time_used = std::chrono::duration_cast<std::chrono::duration<double>>(toc - tic);
   std::cout << "extract SURF cost = " << time_used.count() << " seconds. " << std::endl;
   std::cout << "Found " << cur_frame.descriptors.size() << " features." << std::endl;
-
-  if (show)
-  {
+  std::cout<<show<<std::endl;
+  if (show) {
     cv::Mat feature_image;
     cv::namedWindow("SURF features",0);
     cv::drawKeypoints(cur_frame.img_rgb, cur_frame.keypoints, feature_image, cv::Scalar::all(-1), cv::DrawMatchesFlags::DEFAULT);
@@ -131,6 +127,7 @@ void Feature::Match2viewSIFT(Frame& frameID_1, Frame& frameID_2,
         break;
     }
   }
+
   if (matches_buffer.size() < min_neighboringmatching)
     std::printf("Warning: did not find enough keypoint matching pairs \
     between frame %d and frame %d\n", frameID_1.frame_id, frameID_2.frame_id);
@@ -262,9 +259,77 @@ void Feature::Match2viewSIFTBidirectional(Frame& frameID_1, Frame& frameID_2,
   }
 }
 
-void Feature::Match2viewSURF(Frame& frameID_1, Frame& frameID_2, std::vector<cv::DMatch>& match_buffer,
+void Feature::Match2viewSURF(Frame& frameID_1, Frame& frameID_2, std::vector<cv::DMatch>& matches_buffer,
                      double dist_ratio, bool show) {
+  // match keypoints given two nearby frames.
+  // Input:
+  //  frameID_1:  image frame struct 1
+  //  frameID_2:  image frame struct 2
+  //  matches_buffer: buffer to store matching result
+  //  dist_ratio distance ratio, Default is 0.6 (follow sfmedu)
+  //  show: if display result
 
+  /*
+  related opencv class: cv::DMatch, cv::FlannBasedMatcher.
+  */
+
+  // def required vars
+  int min_neighboringmatching = 20;
+
+  // use flann to find best keypoint matching pairs
+  cv::FlannBasedMatcher matcher;
+  // knn matcher (kd-tree index)
+  std::vector<std::vector<cv::DMatch>> knn_matches;
+  // matcher (kd-tree index)
+  std::vector<cv::DMatch> best_matches;
+  // obtain initial k nearest matching result
+  std::chrono::steady_clock::time_point tic = std::chrono::steady_clock::now();
+  matcher.knnMatch(frameID_1.descriptors, frameID_2.descriptors, knn_matches, 2); // k == 2
+  std::cout << "Initial SURF keypoint matching done." << std::endl;
+
+
+  // Initial matching result
+  for (int i = 0; i < knn_matches.size(); i++) {
+    if (show)
+        best_matches.push_back(knn_matches[i][0]);
+  }
+  // Filter matches based on lowe's algorithm (matching distance)
+  // iteratively increase ratio to add more match pairs
+  while (matches_buffer.size() < min_neighboringmatching) {
+    matches_buffer.clear();
+    for (int i = 0; i < knn_matches.size(); i++) {
+      if (knn_matches[i][0].distance < dist_ratio * knn_matches[i][1].distance) {
+          matches_buffer.push_back(knn_matches[i][0]);
+      }
+    }
+    if (dist_ratio <= 1) {
+      if (dist_ratio < 1)
+        dist_ratio += 0.1;
+      else
+        break;
+    }
+  }
+  // std::cout<<"size is:"<<matches_buffer.size()<<std::endl;
+  if (matches_buffer.size() < min_neighboringmatching)
+    std::printf("Warning: did not find enough keypoint matching pairs \
+    between frame %d and frame %d\n", frameID_1.frame_id, frameID_2.frame_id);
+
+  std::chrono::steady_clock::time_point toc = std::chrono::steady_clock::now();
+  std::chrono::duration<double> time_used = std::chrono::duration_cast<std::chrono::duration<double>>(toc - tic);
+  std::cout << "match SURF cost = " << time_used.count() << " seconds. " << std::endl;
+  std::cout << "# Correspondence: Initial [ " << knn_matches.size() << " ]  Inlier [ " << matches_buffer.size() << " ]" << std::endl;
+
+  if (show) {
+    cv::Mat initial_match_image;
+    cv::Mat match_image;
+    cv::namedWindow("Initial matches",0);
+    cv::namedWindow("Inlier matches",0);
+    cv::drawMatches(frameID_1.img_rgb, frameID_1.keypoints, frameID_2.img_rgb, frameID_2.keypoints, best_matches, initial_match_image);
+    cv::drawMatches(frameID_1.img_rgb, frameID_1.keypoints, frameID_2.img_rgb, frameID_2.keypoints, matches_buffer, match_image);
+    cv::imshow("Initial matches", initial_match_image);
+    cv::imshow("Inlier matches", match_image);
+    cv::waitKey(0);
+  }
 }
 
 void Feature::Match2viewORB(Frame& frameID_1, Frame& frameID_2, std::vector<cv::DMatch>& match_buffer,

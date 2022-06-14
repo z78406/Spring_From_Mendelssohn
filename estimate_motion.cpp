@@ -39,8 +39,8 @@ void MotionEstimator::EstimateEfromF() {
 
 void MotionEstimator::EstimateRTfromE(cv::Mat& essential_matrix,
   std::vector<cv::Point2f>& pst1, std::vector<cv::Point2f>& pst2,
-  const cv::Mat& cam_intrinsic, cv::Mat& Rotation, cv::Mat& Translation,
-  const cv::Mat& inlier_matches_indicator) {
+  cv::Mat& cam_intrinsic, cv::Mat& Rotation, cv::Mat& Translation,
+  cv::Mat& inlier_matches_indicator) {
   /*
   Decompose Rotation/Translation Mat from Essential Matrix.
   Input:
@@ -107,7 +107,7 @@ void MotionEstimator::Triangulation(cv::Mat& T_1, cv::Mat& T_2,
 
 void MotionEstimator::EstimateE5points_RANSAC(Frame& frameID_1, Frame& frameID_2,
       std::vector<cv::DMatch>& initial_matches, std::vector<cv::DMatch>& inlier_matches,
-      Eigen::Matrix4f& Transform, double ransac_prob, double ransac_thre, bool show) {
+      Eigen::Matrix4f& Transform, double ransac_thre, double ransac_prob, bool show) {
   // Estimating [R|T] from matched keypoint pairs using x'Fx = 0 with RANSAC.
 
 	std::chrono::steady_clock::time_point tic = std::chrono::steady_clock::now();
@@ -133,7 +133,7 @@ void MotionEstimator::EstimateE5points_RANSAC(Frame& frameID_1, Frame& frameID_2
 
   // pick inlier keypoint match pairs
   for (int i = 0; i < (int)initial_matches.size(); i++) {
-    if (inlier_matches_indicator.at<bool>(0, i) == 1) // inliear point pairs
+    if (inlier_matches_indicator.at<int>(0, i) == 1) // inliear point pairs
       inlier_matches.push_back(initial_matches[i]);
   }
   // obtain R,T from essential mat. Note that t is up-to-scale.
@@ -166,6 +166,85 @@ void MotionEstimator::EstimateE5points_RANSAC(Frame& frameID_1, Frame& frameID_2
     cv::waitKey(0);
   }
 }
+
+
+
+// void MotionEstimator::EstimateE5points_RANSAC(Frame& cur_frame_1, Frame& cur_frame_2,
+//                                               std::vector<cv::DMatch> &matches, std::vector<cv::DMatch> &inlier_matches,
+//                                               Eigen::Matrix4f &T, double ransac_thre, double ransac_prob, bool show)
+// {
+//     std::chrono::steady_clock::time_point tic = std::chrono::steady_clock::now();
+
+//     std::vector<cv::Point2f> pointset1;
+//     std::vector<cv::Point2f> pointset2;
+
+//     for (int i = 0; i < (int)matches.size(); i++)
+//     {
+//         pointset1.push_back(cur_frame_1.keypoints[matches[i].queryIdx].pt);
+//         pointset2.push_back(cur_frame_2.keypoints[matches[i].trainIdx].pt);
+//     }
+
+//     cv::Mat camera_mat;
+//     cv::eigen2cv(cur_frame_1.k_int, camera_mat);
+
+//     cv::Mat essential_matrix;
+
+//     cv::Mat inlier_matches_indicator;
+
+//     essential_matrix = cv::findEssentialMat(pointset1, pointset2, camera_mat,
+//                                             cv::RANSAC, ransac_prob, ransac_thre, inlier_matches_indicator);
+//     std::cout<<"Indicator size is "<<inlier_matches_indicator.size()<<std::endl;
+//     std::cout<<"match size is "<<matches.size()<<std::endl;
+//     std::cout << "essential_matrix is " << std::endl
+//               << essential_matrix << std::endl;
+
+//     // if ((int)matches.size() != (int)inlier_matches_indicator.size().height)
+//     //   throw std::invalid_argument( "unmatched size. Check EstimateE5points_RANSAC()." );
+//     std::cout<<inlier_matches_indicator<<std::endl;
+//     for (int i = 0; i < (int)matches.size(); i++) {
+//       if (inlier_matches_indicator.at<int>(0, i) == 1) {
+//         inlier_matches.push_back(matches[i]);
+//       }
+//     }
+
+//     cv::Mat R;
+//     cv::Mat t;
+
+//     cv::recoverPose(essential_matrix, pointset1, pointset2, camera_mat, R, t, inlier_matches_indicator);
+
+//     std::chrono::steady_clock::time_point toc = std::chrono::steady_clock::now();
+//     std::chrono::duration<double> time_used = std::chrono::duration_cast<std::chrono::duration<double>>(toc - tic);
+//     std::cout << "Estimate Motion [2D-2D] cost = " << time_used.count() << " seconds. " << std::endl;
+//     std::cout << "Find [" << inlier_matches.size() << "] inlier matches from [" << matches.size() << "] total matches." << std::endl;
+
+//     Eigen::Matrix3f R_eigen;
+//     Eigen::Vector3f t_eigen;
+//     cv::cv2eigen(R, R_eigen);
+//     cv::cv2eigen(t, t_eigen);
+//     T.block(0, 0, 3, 3) = R_eigen;
+//     T.block(0, 3, 3, 1) = t_eigen;
+//     T(3, 0) = 0;
+//     T(3, 1) = 0;
+//     T(3, 2) = 0;
+//     T(3, 3) = 1;
+
+//     std::cout << "Transform is " << std::endl
+//               << T << std::endl;
+
+//     if (show)
+//     {
+//         cv::Mat ransac_match_image;
+//         cv::namedWindow("RANSAC inlier matches", 0);
+//         cv::drawMatches(cur_frame_1.img_rgb, cur_frame_1.keypoints, cur_frame_2.img_rgb, cur_frame_2.keypoints, inlier_matches, ransac_match_image);
+//         cv::imshow("RANSAC inlier matches", ransac_match_image);
+//         cv::waitKey(0);
+//     }
+// }
+
+
+
+
+
 
 
 

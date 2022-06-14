@@ -50,18 +50,18 @@ MotionEstimator me;
 
 // global vars
 // img path list
-static std::vector<std::string> paths_img;
+std::vector<std::string> paths_img;
 // img name list
-static std::vector<std::string> filenames_img;
+std::vector<std::string> filenames_img;
 // camera calibration mat ([fx, 0 ,cx; 0, fy, cy; 0 0 1])
-static m3f K;
+m3f K;
 // frame buffer
-static std::vector<Frame> frame_buffer;
+std::vector<Frame> frame_buffer;
 // keypoint type
-static std::string kp_type;
+std::string kp_type;
 // global Pair set
-static std::vector<std::vector<Pair>> img_match_graph;
-static bool show_result;
+std::vector<std::vector<Pair>> img_match_graph;
+bool show_result = false;
 // <keypoint type, int> dict
 std::map<std::string, int> kp_type_dict =
 {{"SIFT", 0}, {"SURF", 1}, {"ORB", 2}};
@@ -136,10 +136,10 @@ bool FeatureMatching() {
         feat.DetectFeatureSIFT(frame_buffer[i], show_result);
         break;
       case 1:
-        feat.DetectFeatureSURF(frame_buffer[i], show_result);
+        feat.DetectFeatureSURF(frame_buffer[i], 350, show_result);
         break;
       case 2:
-        feat.DetectFeatureORB(frame_buffer[i], show_result);
+        feat.DetectFeatureORB(frame_buffer[i], 5000, show_result);
         break;
     }
     keypoints_total_count += frame_buffer[i].keypoints.size();
@@ -166,8 +166,8 @@ bool FeatureMatching() {
     std::vector<Pair> cur_pairs;
     for (int j = std::max(i - max_frame_interval, 0); j < i; j++) {  // reference frame
       std::cout<<"Selcted frame pair is:"<<i<<" and "<<j<<std::endl;
-      std::vector<dmach> initial_matches;  // initial matches from keypoint matching
-      std::vector<dmach> inlier_matches;   // inlier matches after ransac refinement
+      std::vector<cv::DMatch> initial_matches;  // initial matches from keypoint matching
+      std::vector<cv::DMatch> inlier_matches;   // inlier matches after ransac refinement
       Eigen::Matrix4f extrinsic = Eigen::Matrix4f::Identity();
       double relative_depth = 1;
 
@@ -180,18 +180,16 @@ bool FeatureMatching() {
           // feat.Match2viewSIFTBidirectional(frame_buffer[i], frame_buffer[j], initial_matches, (double)0.6, show_result);
           break;
         case 1:
-          feat.Match2viewSURF(frame_buffer[i], frame_buffer[j], initial_matches);
+          feat.Match2viewSURF(frame_buffer[i], frame_buffer[j], initial_matches, 0.5, show_result);
           break;
         case 2:
-          feat.Match2viewORB(frame_buffer[i], frame_buffer[j], initial_matches);
+          feat.Match2viewORB(frame_buffer[i], frame_buffer[j], initial_matches, 0.5, show_result);
           break;
       }
 
-
-      if (initial_matches.size() > num_min_pair) { // refine by RANSAC
-        std::cout<<"#################"<<std::endl;
-        me.EstimateE5points_RANSAC(frame_buffer[i], frame_buffer[j], initial_matches,
-          inlier_matches, extrinsic);
+      std::cout<<"initial matche size is:"<<(int)initial_matches.size()<<std::endl;
+      if (!initial_matches.empty() && initial_matches.size() > num_min_pair) { // refine by RANSAC
+        me.EstimateE5points_RANSAC(frame_buffer[i], frame_buffer[j], initial_matches, inlier_matches, extrinsic);
         me.GetDepth(frame_buffer[i], frame_buffer[j], extrinsic, inlier_matches, relative_depth);
         if (show_result) {
           mv.DisplayFrameMatch(frame_buffer[i], frame_buffer[j], inlier_matches);
@@ -199,31 +197,31 @@ bool FeatureMatching() {
       }
 
       // link matched point idx in frame i and j.
-      // util.LinkMatchedPointID(frame_buffer[i], frame_buffer[j], inlier_matches);
+      util.LinkMatchedPointID(frame_buffer[i], frame_buffer[j], inlier_matches);
 
 
-      // Assign i frame's keypoints unique id by finding its correspondence in already labeled j frame
-      for (int k = 0; k < inlier_matches.size(); k++)
-      {
-          if (frame_buffer[i].unique_pixel_id[inlier_matches[k].queryIdx] < 0 ||
-              frame_buffer[i].unique_pixel_id[inlier_matches[k].queryIdx] != frame_buffer[j].unique_pixel_id[inlier_matches[k].trainIdx])
-          {
-              bool is_duplicated = 0;
-              for (int m = 0; m < frame_buffer[i].unique_pixel_id.size(); m++) // check duplication
-              {
-                  if (frame_buffer[j].unique_pixel_id[inlier_matches[k].trainIdx] == frame_buffer[i].unique_pixel_id[m])
-                  {
-                      is_duplicated = 1;
-                      break;
-                  }
-              }
-              if (!is_duplicated)
-              {
-                  frame_buffer[i].unique_pixel_id[inlier_matches[k].queryIdx] = frame_buffer[j].unique_pixel_id[inlier_matches[k].trainIdx];
-                  frame_buffer[i].unique_pixel_has_match[inlier_matches[k].queryIdx] = 1;
-              }
-          }
-      }
+      // // Assign i frame's keypoints unique id by finding its correspondence in already labeled j frame
+      // for (int k = 0; k < inlier_matches.size(); k++)
+      // {
+      //     if (frame_buffer[i].unique_pixel_id[inlier_matches[k].queryIdx] < 0 ||
+      //         frame_buffer[i].unique_pixel_id[inlier_matches[k].queryIdx] != frame_buffer[j].unique_pixel_id[inlier_matches[k].trainIdx])
+      //     {
+      //         bool is_duplicated = 0;
+      //         for (int m = 0; m < frame_buffer[i].unique_pixel_id.size(); m++) // check duplication
+      //         {
+      //             if (frame_buffer[j].unique_pixel_id[inlier_matches[k].trainIdx] == frame_buffer[i].unique_pixel_id[m])
+      //             {
+      //                 is_duplicated = 1;
+      //                 break;
+      //             }
+      //         }
+      //         if (!is_duplicated)
+      //         {
+      //             frame_buffer[i].unique_pixel_id[inlier_matches[k].queryIdx] = frame_buffer[j].unique_pixel_id[inlier_matches[k].trainIdx];
+      //             frame_buffer[i].unique_pixel_has_match[inlier_matches[k].queryIdx] = 1;
+      //         }
+      //     }
+      // }
 
       Pair cur_pair(i, j, inlier_matches, extrinsic, relative_depth);
       cur_pairs.push_back(cur_pair);
@@ -278,7 +276,7 @@ bool FeatureMatching() {
       }
       // std::cout<<count_new_unique_point<<std::endl;
       global_unique_point_id += count_new_unique_point;
-      std::cout<<global_unique_point_id<<std::endl;
+      std::cout<<frame_buffer[i].unique_pixel_id.size()<< " "<<global_unique_point_id<<std::endl;
 
     // // record keypoints ID into a global recording matrix
     // util.RecordIDInMat(feature_track_matrix, i, frame_buffer);
@@ -303,6 +301,7 @@ int main(int argc, char* argv[]) {
   // load flags into gflags
   google::ParseCommandLineFlags(&argc, &argv, true);
   show_result = FLAGS_launch_viewer;
+  // std::cout<<show_result<<std::endl;
   kp_type = FLAGS_keypoint_type;
   // read image list thread
   bool flag_not_set_img_folder = \
