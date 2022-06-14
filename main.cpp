@@ -50,20 +50,20 @@ MotionEstimator me;
 
 // global vars
 // img path list
-std::vector<std::string> paths_img;
+static std::vector<std::string> paths_img;
 // img name list
-std::vector<std::string> filenames_img;
+static std::vector<std::string> filenames_img;
 // camera calibration mat ([fx, 0 ,cx; 0, fy, cy; 0 0 1])
-m3f K;
+static m3f K;
 // frame buffer
-std::vector<Frame> frame_buffer;
+static std::vector<Frame> frame_buffer;
 // keypoint type
-std::string kp_type;
+static std::string kp_type;
 // global Pair set
-std::vector<std::vector<Pair>> img_match_graph;
-bool show_result = false;
+static std::vector<std::vector<Pair>> img_match_graph;
+static bool show_result = false;
 // <keypoint type, int> dict
-std::map<std::string, int> kp_type_dict =
+static std::map<std::string, int> kp_type_dict =
 {{"SIFT", 0}, {"SURF", 1}, {"ORB", 2}};
 
 
@@ -171,7 +171,6 @@ bool FeatureMatching() {
       Eigen::Matrix4f extrinsic = Eigen::Matrix4f::Identity();
       double relative_depth = 1;
 
-
       // switch keypoint matching method
       // get initial matching results
       switch (kp_type_dict[kp_type]) {
@@ -199,87 +198,16 @@ bool FeatureMatching() {
       // link matched point idx in frame i and j.
       util.LinkMatchedPointID(frame_buffer[i], frame_buffer[j], inlier_matches);
 
-
-      // // Assign i frame's keypoints unique id by finding its correspondence in already labeled j frame
-      // for (int k = 0; k < inlier_matches.size(); k++)
-      // {
-      //     if (frame_buffer[i].unique_pixel_id[inlier_matches[k].queryIdx] < 0 ||
-      //         frame_buffer[i].unique_pixel_id[inlier_matches[k].queryIdx] != frame_buffer[j].unique_pixel_id[inlier_matches[k].trainIdx])
-      //     {
-      //         bool is_duplicated = 0;
-      //         for (int m = 0; m < frame_buffer[i].unique_pixel_id.size(); m++) // check duplication
-      //         {
-      //             if (frame_buffer[j].unique_pixel_id[inlier_matches[k].trainIdx] == frame_buffer[i].unique_pixel_id[m])
-      //             {
-      //                 is_duplicated = 1;
-      //                 break;
-      //             }
-      //         }
-      //         if (!is_duplicated)
-      //         {
-      //             frame_buffer[i].unique_pixel_id[inlier_matches[k].queryIdx] = frame_buffer[j].unique_pixel_id[inlier_matches[k].trainIdx];
-      //             frame_buffer[i].unique_pixel_has_match[inlier_matches[k].queryIdx] = 1;
-      //         }
-      //     }
-      // }
-
       Pair cur_pair(i, j, inlier_matches, extrinsic, relative_depth);
       cur_pairs.push_back(cur_pair);
       std::cout << "Frame [" << i << "] and Frame [" << j << "] matching done." << std::endl;
-
     }
+
     img_match_graph.push_back(cur_pairs); // all matched 2 image pairs related to frame i
-
     // assign unique ID to unmatched keypoints in frame I
-    // util.AssignUnmatchedPointId(frame_buffer, i, global_unique_point_id);
-    // util.AssignUnmatchedPointId(frame_buffer[i], global_unique_point_id);
-    // std::cout<<"########"<<std::endl;
-
-
-    // std::cout<<"global ID is:"<<global_unique_point_id<<std::endl;
-    // std::cout<<"current frame size is:"<<frame_buffer[i].unique_pixel_id.size()<<std::endl;
-    // int count_new_unique_point = 0;
-    // for (int index = 0; index < frame_buffer[i].unique_pixel_id.size(); index++) {
-    //   // std::cout<<index<<std::endl;
-    //   if (frame_buffer[i].unique_pixel_id[index] < 0) {  // unmatched keypoint
-    //     frame_buffer[i].unique_pixel_id[index] = global_unique_point_id + cur_frame_unique_point_id;
-    //     cur_frame_unique_point_id++;  // update local id for unmatched point in frame i
-    //   }
-
-    // for (int k = 0; k < frame_buffer[i].unique_pixel_id.size(); k++)
-    // {
-    //     if (frame_buffer[i].unique_pixel_id[k] < 0)
-    //     {
-    //         frame_buffer[i].unique_pixel_id[k] = global_unique_point_id + count_new_unique_point;
-    //         count_new_unique_point++;
-    //     }
-
-    //     //Update the feature tracking matrix
-    //     feature_track_matrix[i][frame_buffer[i].unique_pixel_id[k]] = 1;
-    // }
-    // global_unique_point_id += count_new_unique_point;
-
-
-      //Assign unique id for non-matched keypoints
-      int count_new_unique_point = 0;
-      for (int k = 0; k < frame_buffer[i].unique_pixel_id.size(); k++)
-      {
-          if (frame_buffer[i].unique_pixel_id[k] < 0)
-          {
-              frame_buffer[i].unique_pixel_id[k] = global_unique_point_id + count_new_unique_point;
-              // std::cout<<frame_buffer[i].unique_pixel_id[k]<<std::endl;
-              count_new_unique_point++;
-          }
-
-          //Update the feature tracking matrix
-          // feature_track_matrix[i][frame_buffer[i].unique_pixel_id[k]] = 1;
-      }
-      // std::cout<<count_new_unique_point<<std::endl;
-      global_unique_point_id += count_new_unique_point;
-      std::cout<<frame_buffer[i].unique_pixel_id.size()<< " "<<global_unique_point_id<<std::endl;
-
-    // // record keypoints ID into a global recording matrix
-    // util.RecordIDInMat(feature_track_matrix, i, frame_buffer);
+    util.AssignUnmatchedPointId(frame_buffer[i], global_unique_point_id);
+    // record keypoints ID into a global recording matrix
+    util.RecordIDInMat(feature_track_matrix, i, frame_buffer);
   }
   std::cout << "Pairwise feature matching done." << std::endl;
   std::cout << "Feature tracking done, there are " << global_unique_point_id << " unique points in total." << std::endl;

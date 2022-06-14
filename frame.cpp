@@ -10,24 +10,6 @@ void Frame::init_p_id() {
         unique_pixel_has_match.push_back(false);
     }
 
-// void Utility::AssignUnmatchedPointId(std::vector<Frame>& frame_buffer, const int& frameID, int& global_unique_point_id) {
-//   // Assign ID to keypoint in each frame
-//   /* Notice that if two keypoints matched, one ID (id2) would be copied to the other (id1) by LinkMatchedPointID().
-//      E.g., p2(id2) = p1(id1) for matched <p1, p2> between frame i and j.
-//      Otherwise, it will be assigned a unique ID (id) that might be used in the next frame matching process.
-//   */
-//   int cur_frame_unique_point_id = 0;
-//   std::cout<<"global ID is:"<<global_unique_point_id<<std::endl;
-//   for (unsigned int index = 0; index < frame_buffer[frameID].unique_pixel_id.size(); index++) {
-//     if (frame_buffer[frameID].unique_pixel_id[index] < 0) {  // unmatched keypoint
-//       frame_buffer[frameID].unique_pixel_id[index] = global_unique_point_id + cur_frame_unique_point_id;
-//       cur_frame_unique_point_id++;  // update local id for unmatched point in frame i
-//     }
-//   }
-//   // std::cout<<"########"<<std::endl;
-//   global_unique_point_id += cur_frame_unique_point_id;  // update global id for next unmatched point
-// }
-
 void Utility::AssignUnmatchedPointId(Frame& cur_frame, int& global_unique_point_id) {
   // Assign ID to keypoint in each frame
   /* Notice that if two keypoints matched, one ID (id2) would be copied to the other (id1) by LinkMatchedPointID().

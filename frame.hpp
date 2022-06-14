@@ -106,7 +106,6 @@ struct PointCloud {
 
 // utility for various feature processing funcs
 struct Utility {
-  // void AssignUnmatchedPointId(std::vector<Frame>& frame_buffer, const int& frameID, int& global_unique_point_id);
   void AssignUnmatchedPointId(Frame& cur_frame, int& global_unique_point_id);
   void SetIntrinsicMat(std::vector<Frame>& frame_buffer, const Eigen::Matrix3f& K);
   void LinkMatchedPointID(Frame& frameID_1, Frame& frameID_2, const std::vector<cv::DMatch>& inlier_matches);
