@@ -23,9 +23,8 @@
 
 namespace sfm {
 
-  // single frame class
+// single frame class
 struct Frame {
-
   public:
     Frame() {};
     Frame(const cv::Mat3b& img_rgb, const int& img_id, const std::string& img_path)
@@ -60,12 +59,20 @@ struct Pair {
 
     double appro_depth;
 
-    Pair(unsigned int i, unsigned int j, std::vector<cv::DMatch>& input_matches,
-      Eigen::Matrix4f & Tf, double mean_depth) :
-    frame_id_1(i), frame_id_2(j), initial_matches(std::move(input_matches)),
-    Transform(Tf), appro_depth(mean_depth)
-    {};
+    bool operator==(const Pair* pair) const { // for constructing customized map
+    return std::to_string(this->frame_id_1) + '_' + std::to_string(this->frame_id_2) ==
+           std::to_string(pair->frame_id_1) + '_' + std::to_string(pair->frame_id_2);
+    }
 
+    Pair() {};
+    Pair(unsigned int i, unsigned int j, std::vector<cv::DMatch>& input_matches,
+      Eigen::Matrix4f & Tf, double mean_depth) {
+      frame_id_1 = i;
+      frame_id_2 = j;
+      initial_matches = input_matches;
+      Transform = Tf;
+      appro_depth = mean_depth;
+    }
 };
 
 // global graph class
@@ -96,8 +103,8 @@ struct Graph {
 
 struct PointCloud {
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr pc_rgb;
-  std::vector<int> unique_points_id;
-  std::vector<int> inlier;
+  std::vector<int> unique_point_id;
+  std::vector<int> has_inlier;
 
   PointCloud() {
     pc_rgb = pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -111,7 +118,7 @@ struct Utility {
   void LinkMatchedPointID(Frame& frameID_1, Frame& frameID_2, const std::vector<cv::DMatch>& inlier_matches);
   void RecordIDInMat(std::vector<std::vector<bool>>& feature_track_matrix,
   const int& frameID, const std::vector<Frame>& frame_buffer);
-
+  std::string type2str(int type); // check cv::Mat data type
 };
 
 

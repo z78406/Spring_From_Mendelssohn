@@ -26,8 +26,6 @@ void Utility::AssignUnmatchedPointId(Frame& cur_frame, int& global_unique_point_
   }
   // std::cout<<"########"<<std::endl;
   global_unique_point_id += cur_frame_unique_point_id;  // update global id for next unmatched point
-  std::cout<<"global ID is:"<<global_unique_point_id<<std::endl;
-  std::cout<<"current frame size is:"<<cur_frame.unique_pixel_id.size()<<std::endl;
 }
 
 
@@ -45,21 +43,19 @@ void Utility::LinkMatchedPointID(Frame& frameID_1, Frame& frameID_2,
   // if frame frameID_1<p2> matches frame frameID_2<p1>, then frame frameID_1.unique_pixel_ids[p2] = p1;
   // perform like union-find point id registration for all matched points in every frame.
   for (int idx = 0; idx < inlier_matches.size(); idx++) {
-    int quiry_point_idx = inlier_matches[idx].queryIdx;
-    int match_point_idx = inlier_matches[idx].trainIdx;
-    int quiry_point_id = frameID_1.unique_pixel_id[quiry_point_idx];
-    int match_point_id = frameID_2.unique_pixel_id[match_point_idx];
+    int quiry_point_idx = inlier_matches[idx].queryIdx; // query point idx (relative order in inlier_matches)
+    int match_point_idx = inlier_matches[idx].trainIdx; // matched point idx (relative order in inlier_matches)
+    int quiry_point_id = frameID_1.unique_pixel_id[quiry_point_idx]; // global ID of the query point
+    int match_point_id = frameID_2.unique_pixel_id[match_point_idx]; // global ID of the matched point
     if (quiry_point_id < 0 || quiry_point_id != match_point_id) { // if quiry point is new and did not link to match point's id
       bool is_duplicated = 0;
       if (std::find(frameID_1.unique_pixel_id.begin(),
         frameID_1.unique_pixel_id.end(), match_point_id) != frameID_1.unique_pixel_id.end())
-      { // match point links to another quiry point
+      { // match point links to another quiry point in frame 1. Allow only 1-1 point match between frame 1 and 2.
         is_duplicated = 1;
       }
       if (!is_duplicated) {  // no duplicate
-      	std::cout<<quiry_point_id<< " "<<match_point_id<<std::endl;
         quiry_point_id = match_point_id;
-        std::cout<<quiry_point_id<< " "<<match_point_id<<std::endl;
         frameID_1.unique_pixel_has_match[quiry_point_idx] = 1;
       }
     }
@@ -71,4 +67,27 @@ void Utility::RecordIDInMat(std::vector<std::vector<bool>>& feature_track_matrix
   for (unsigned int i = 0; i < frame_buffer[frameID].unique_pixel_id.size(); i++) {
     feature_track_matrix[frameID][frame_buffer[frameID].unique_pixel_id[i]] = 1;
   }
+}
+
+std::string Utility::type2str(int type) {
+  std::string r;
+
+  uchar depth = type & CV_MAT_DEPTH_MASK;
+  uchar chans = 1 + (type >> CV_CN_SHIFT);
+
+  switch ( depth ) {
+    case CV_8U:  r = "8U"; break;
+    case CV_8S:  r = "8S"; break;
+    case CV_16U: r = "16U"; break;
+    case CV_16S: r = "16S"; break;
+    case CV_32S: r = "32S"; break;
+    case CV_32F: r = "32F"; break;
+    case CV_64F: r = "64F"; break;
+    default:     r = "User"; break;
+  }
+
+  r += "C";
+  r += (chans+'0');
+
+  return r;
 }

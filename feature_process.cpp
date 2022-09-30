@@ -67,7 +67,6 @@ void Feature::DetectFeatureSURF(Frame& cur_frame, int minHessian, bool show) {
   std::chrono::duration<double> time_used = std::chrono::duration_cast<std::chrono::duration<double>>(toc - tic);
   std::cout << "extract SURF cost = " << time_used.count() << " seconds. " << std::endl;
   std::cout << "Found " << cur_frame.descriptors.size() << " features." << std::endl;
-  std::cout<<show<<std::endl;
   if (show) {
     cv::Mat feature_image;
     cv::namedWindow("SURF features",0);
@@ -331,6 +330,8 @@ void Feature::Match2viewSURF(Frame& frameID_1, Frame& frameID_2, std::vector<cv:
     cv::waitKey(0);
   }
 }
+
+
 
 void Feature::Match2viewORB(Frame& frameID_1, Frame& frameID_2, std::vector<cv::DMatch>& match_buffer,
                      double dist_ratio, bool show) {

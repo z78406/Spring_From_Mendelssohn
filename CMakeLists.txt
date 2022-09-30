@@ -55,7 +55,8 @@ message("DEP: QT5 [OK] ")
 # gflags / Boost / PCL
 # find other packages
 find_package(gflags REQUIRED)
-find_package(Boost COMPONENTS system filesystem REQUIRED)
+find_package(Boost COMPONENTS thread system filesystem REQUIRED)
+include_directories(${Boost_INCLUDE_DIR})
 find_package(vtk REQUIRED)
 include_directories(${VTK_INCLUDE_DIRS})
 find_package(PCL 1.12 REQUIRED)
@@ -66,16 +67,18 @@ message("DEP: gflags Boost PCL [OK] ")
 # include_directories(/usr/local/include ./include)
 
 # specify the executable target to be built
-add_executable(3DR main.cpp data_io.hpp feature_process.hpp feature_process.cpp
+set(SOURCE_FILES main.cpp data_io.hpp feature_process.hpp feature_process.cpp
 				my_package.hpp viewer.hpp viewer.cpp frame.hpp frame.cpp
 				estimate_motion.hpp estimate_motion.cpp)
+add_executable(3DR ${SOURCE_FILES})
 
 # tell it to link the executable target against OpenCV
 target_link_libraries(3DR ${OpenCV_LIBRARIES})
 target_link_libraries(3DR gflags)
 target_link_libraries(3DR ${PCL_LIBRARIES})
 target_link_libraries(3DR ${CERES_LIBRARIES})
-target_link_libraries(3DR ${Boost_FILESYSTEM_LIBRARY} ${Boost_SYSTEM_LIBRARY})
+target_link_libraries(3DR ${Boost_LIBRARIES})
+#target_link_libraries(3DR ${Boost_THREAD_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${Boost_SYSTEM_LIBRARY})
 #target_compile_options(3DR PUBLIC -Wall -Wextra -pedantic)
 
 

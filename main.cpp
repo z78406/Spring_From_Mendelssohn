@@ -60,7 +60,8 @@ static std::vector<Frame> frame_buffer;
 // keypoint type
 static std::string kp_type;
 // global Pair set
-static std::vector<std::vector<Pair>> img_match_graph;
+static std::unordered_map<std::string, Pair> img_match_graph; // <pair_key: "i_j", Pair Struct>
+// static std::vector<std::vector<Pair>> img_match_graph;
 static bool show_result = false;
 // <keypoint type, int> dict
 static std::map<std::string, int> kp_type_dict =
@@ -163,11 +164,11 @@ bool FeatureMatching() {
   // pairwise matching of frame: <i, j>. To do: try different matching sequences
   int max_frame_interval = 1; // max interval == i - j of matched frame pair <i, j>
   for (int i = 0; i < frame_buffer.size(); i++) {  // main frame
-    std::vector<Pair> cur_pairs;
+    // std::vector<Pair> cur_pairs;
     for (int j = std::max(i - max_frame_interval, 0); j < i; j++) {  // reference frame
       std::cout<<"Selcted frame pair is:"<<i<<" and "<<j<<std::endl;
-      std::vector<cv::DMatch> initial_matches;  // initial matches from keypoint matching
-      std::vector<cv::DMatch> inlier_matches;   // inlier matches after ransac refinement
+      std::vector<dmach> initial_matches;  // initial matches from keypoint matching
+      std::vector<dmach> inlier_matches;   // inlier matches after ransac refinement
       Eigen::Matrix4f extrinsic = Eigen::Matrix4f::Identity();
       double relative_depth = 1;
 
@@ -186,7 +187,11 @@ bool FeatureMatching() {
           break;
       }
 
-      std::cout<<"initial matche size is:"<<(int)initial_matches.size()<<std::endl;
+      std::cout<<"size of initial matched keypoint set is:"<<(int)initial_matches.size()<<std::endl;
+
+      /*
+      potential bugs in me.EstimateE5points_RANSAC!!! (check within func for more details)
+      */
       if (!initial_matches.empty() && initial_matches.size() > num_min_pair) { // refine by RANSAC
         me.EstimateE5points_RANSAC(frame_buffer[i], frame_buffer[j], initial_matches, inlier_matches, extrinsic);
         me.GetDepth(frame_buffer[i], frame_buffer[j], extrinsic, inlier_matches, relative_depth);
@@ -197,13 +202,16 @@ bool FeatureMatching() {
 
       // link matched point idx in frame i and j.
       util.LinkMatchedPointID(frame_buffer[i], frame_buffer[j], inlier_matches);
-
+      // std::cout<<"matcher size is: " << inlier_matches.size()<<std::endl;
+      // pair and all pairs related to frame i
       Pair cur_pair(i, j, inlier_matches, extrinsic, relative_depth);
-      cur_pairs.push_back(cur_pair);
+      std::string pair_key = std::to_string(i) + '_' + std::to_string(j);
+      img_match_graph.insert({pair_key, cur_pair});
+      // cur_pairs.push_back(cur_pair);
       std::cout << "Frame [" << i << "] and Frame [" << j << "] matching done." << std::endl;
     }
 
-    img_match_graph.push_back(cur_pairs); // all matched 2 image pairs related to frame i
+    // img_match_graph.push_back(cur_pairs);
     // assign unique ID to unmatched keypoints in frame I
     util.AssignUnmatchedPointId(frame_buffer[i], global_unique_point_id);
     // record keypoints ID into a global recording matrix
@@ -211,18 +219,48 @@ bool FeatureMatching() {
   }
   std::cout << "Pairwise feature matching done." << std::endl;
   std::cout << "Feature tracking done, there are " << global_unique_point_id << " unique points in total." << std::endl;
-  return 1;
+  return 0;
 }
 
-// bool Build_Graph() {
-//   // copy buffer
-//   graph.frame_buffer = frame_buffer;
-//   graph.frame_length = frame_buffer.size();
-//   graph.K = K;
+bool Build_Graph() {
+  std::cout << "Start Triangulation to generate point cloud." << std::endl;
+  PointCloud sparse_pointcloud;
+  // copy buffer
+  graph.frame_buffer = frame_buffer;
+  graph.frame_length = frame_buffer.size();
+  graph.K = K;
+  // Notice the sequence order is important !!!
+  // Since we define main frame i and reference frame j such that j < i,
+  // Here we need to set main frame as i and reference frame as j such that (j < i)
+  int init_frameID_1 = 3;
+  int init_frameID_2 = 2;
+  double depth_init = 10.0;
+  // skip best initial frame selection
+  // Initialization
+  std::string pair_key = std::to_string(init_frameID_1) + "_" + std::to_string(init_frameID_2);
+  if (img_match_graph.find(pair_key) == img_match_graph.end()) {
+    std::cerr << "Exception: did not find matched frame pair!" << std::endl;
+    return -1;
+  }
+
+  frame_buffer[init_frameID_1].k_ext = Eigen::Matrix4f::Identity();
+  std::cout << "Frame [" << init_frameID_1 << "] 's pose: " << std::endl
+            << frame_buffer[init_frameID_1].k_ext << std::endl;
+  frame_buffer[init_frameID_2].k_ext = img_match_graph[pair_key].Transform * frame_buffer[init_frameID_1].k_ext;
+  std::cout << "Frame [" << init_frameID_2 << "] 's pose: " << std::endl
+            << frame_buffer[init_frameID_2].k_ext << std::endl;
+  if (show_result)
+    mv.DisplayFrame(frame_buffer[init_frameID_1]);
+  if (show_result)
+    mv.DisplayFrame(frame_buffer[init_frameID_2]);
+
+  //Initial Frame Pair Triangulation
+  me.doTriangulation(frame_buffer[init_frameID_1], frame_buffer[init_frameID_2],
+    img_match_graph[pair_key].initial_matches, sparse_pointcloud, true);
 
 
-//   return 1;
-// }
+  return 0;
+}
 
 
 int main(int argc, char* argv[]) {
@@ -231,6 +269,7 @@ int main(int argc, char* argv[]) {
   show_result = FLAGS_launch_viewer;
   // std::cout<<show_result<<std::endl;
   kp_type = FLAGS_keypoint_type;
+
   // read image list thread
   bool flag_not_set_img_folder = \
   gflags::GetCommandLineFlagInfoOrDie("dir_img").is_default;
@@ -252,8 +291,8 @@ int main(int argc, char* argv[]) {
   // read image list thread
   FeatureMatching();
 
-
-  //
+  // build global graph from SFM
+  Build_Graph();
   return 0;
 }
 
