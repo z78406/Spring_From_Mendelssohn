@@ -1,0 +1,8 @@
+# for installing pcl and vtk in ubuntu 18.04
+pcl: 1.8.1
+vtk:8.1.2
+
+ref:
+https://kezunlin.me/post/137aa5fc/
+https://kezunlin.me/post/137aa5fc/
+https://zhuanlan.zhihu.com/p/461910839
